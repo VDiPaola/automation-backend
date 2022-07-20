@@ -1,7 +1,10 @@
+use std::error::Error;
+
+use actix_web::FromRequest;
 use mysql::{Pool, PooledConn, params, from_row};
 use mysql::prelude::*;
 
-use crate::models::task::Task;
+use crate::models::task::{SetTask, GetTask};
 
 
 pub struct DB{
@@ -9,6 +12,11 @@ pub struct DB{
     conn_string: String,
     conn_pool: Pool,
     connection: PooledConn
+}
+
+
+pub enum Errors{
+    SetTaskError
 }
 
 impl DB{
@@ -40,13 +48,28 @@ impl DB{
     }
 
 
-    pub fn get_task(&mut self, name: String){
-        let loaded_payments = self.connection.exec_map(
-            format!("SELECT name, variables FROM tasks WHERE name = \"{}\"", name),
+    pub fn get_task(&mut self, name: String) -> Vec<GetTask>{
+        let task = self.connection.exec_map(
+            format!("SELECT name, params FROM tasks WHERE name = \"{}\"", name),
             (),
-            | (n, v): (String,String) | format!("name: {}, variables: {}", n, v),
+            | (name, p): (String,String) | GetTask{
+                name,
+                params: p.split(",").map(String::from).collect()
+            },
         ).unwrap();
-        println!("{:?}", loaded_payments);
+        return task;
+    }
+
+    pub fn set_task(&mut self, task: SetTask) -> Result<Vec<String>,mysql::Error>{
+        self.connection.exec(r"INSERT INTO tasks (name, variables, functions,tasks, params)
+            VALUES (:name, :variables, :functions, :tasks, :params)",
+            params! {
+                "name" => task.name,
+                "variables" => task.variables,
+                "functions" => task.functions,
+                "tasks" => task.tasks,
+                "params" => task.params.join(","),
+            })
     }
 }
 
@@ -55,14 +78,6 @@ impl DB{
 //     let pool = Pool::new(url)?;
 
 //     let mut conn = pool.get_conn()?;
-
-//     // Let's create a table for payments.
-//     conn.query_drop(
-//         r"CREATE TEMPORARY TABLE payment (
-//             customer_id int not null,
-//             amount int not null,
-//             account_name text
-//         )")?;
 
 //     let payments = vec![
 //         Payment { customer_id: 1, amount: 2, account_name: None },

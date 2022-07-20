@@ -10,9 +10,11 @@ use std::env;
 //cargo test -- --nocapture
 #[cfg(test)]
 mod tests {
+    use crate::models::task::SetTask;
+
     use super::*;
-    #[test]
-    fn get_row() {
+
+    fn init() -> DB{
         dotenv().ok();
 
         let db_user = env::var("DB_USER").expect("env var not set");
@@ -20,14 +22,34 @@ mod tests {
         let db_port = env::var("DB_PORT").expect("env var not set");
         let db_name = env::var("DB_NAME").expect("env var not set");
 
-        let mut db: DB = DB::new(
+        DB::new(
             db_user.clone(),
             db_pass.clone(),
             db_port.clone(),
             db_name.clone()
-        );
+        )
+    }
 
+    #[test]
+    fn get_test() {
+        let mut db = init();
         let name = db.get_task("test".to_string());
         println!("{:?}", name);
+    }
+
+    #[test]
+    fn set_test() {
+        let mut db = init();
+        let task = SetTask{
+            name: "settest".to_string(),
+            functions: "{\"a\":\"b\"}".to_string(),
+            variables: "{\"b\":\"c\"}".to_string(),
+            tasks: "{\"d\":\"e\"}".to_string(),
+            params: vec!["something","else"].into_iter().map(String::from).collect()
+        };
+        match db.set_task(task){
+            Ok(something) => println!("{:?}", something),
+            Err(err) => println!("error: {:?}", err)
+        };
     }
 }

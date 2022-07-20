@@ -2,16 +2,14 @@ mod controllers;
 mod models;
 mod helpers;
 
-// use controllers::task::{
-//     get_task,
-//     create_task,
-//     start_task,
-// };
+use controllers::task::{
+    get_task,
+};
 use helpers::ddb::{DB};
 use actix_web::{HttpServer, App, web::Data, middleware::Logger};
 
 use dotenv::dotenv;
-use std::env;
+use std::{env, sync::Mutex};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -33,12 +31,12 @@ async fn main() -> std::io::Result<()> {
             db_port.clone(),
             db_name.clone()
         );
-        let ddb_data = Data::new(db);
+        let ddb_data = Data::new(Mutex::new(db));
         let logger = Logger::default();
         App::new()
             .wrap(logger)
             .app_data(ddb_data)
-            // .service(get_task)
+            .service(get_task)
             // .service(create_task)
             // .service(start_task)
     })

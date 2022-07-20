@@ -1,4 +1,6 @@
-use crate::{models::task::Task, helpers::ddb::DB};
+use std::sync::Mutex;
+
+use crate::{helpers::ddb::DB, models::task::GetTask};
 use actix_web::{
     get, 
     post, 
@@ -8,7 +10,7 @@ use actix_web::{
     web::Json,
     web::Data,
     HttpResponse,
-    http::{header::ContentType, StatusCode}
+    http::{header::ContentType, StatusCode}, middleware::Logger
 };
 use serde::{Serialize, Deserialize};
 use strum::{Display};
@@ -26,20 +28,36 @@ pub enum TaskError {
     BadTaskRequest
 }
 
-// #[get("/task/{name}")]
-// pub async fn get_task(
-//     db: DB,
-//     task_identifier: Path<TaskIdentifier>
-// ) -> Result<Json<Task>, TaskError> {
-//     let tsk = db.get_task(
-//         task_identifier.into_inner().name
-//     ).await;
+impl ResponseError for TaskError {
+    fn error_response(&self) -> HttpResponse {
+        HttpResponse::build(self.status_code())
+            .insert_header(ContentType::json())
+            .body(self.to_string())
+    }
 
-//     match tsk {
-//         Some(tsk) => Ok(Json(tsk)),
-//         None => Err(TaskError::TaskNotFound)
-//     }
-// }
+    fn status_code(&self) -> StatusCode {
+        match self {
+            TaskError::TaskNotFound => StatusCode::NOT_FOUND,
+            TaskError::TaskUpdateFailure => StatusCode::FAILED_DEPENDENCY,
+            TaskError::TaskCreationFailure => StatusCode::FAILED_DEPENDENCY,
+            TaskError::BadTaskRequest => StatusCode::BAD_REQUEST
+        }
+    }
+}
+
+#[get("/task/{name}")]
+pub async fn get_task(
+    db: Data<Mutex<DB>>,
+    path: Path<TaskIdentifier>,
+) -> Result<Json<GetTask>, TaskError> {
+    let name = path.into_inner().name;
+    let task = db.lock().unwrap().get_task(name);
+
+    match task.into_iter().next() {
+        Some(tsk) => Ok(Json(tsk)),
+        None => Err(TaskError::TaskNotFound)
+    }
+}
 
 
 // #[derive(Deserialize, Serialize)]
