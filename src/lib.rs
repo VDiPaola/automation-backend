@@ -45,9 +45,10 @@ mod tests {
             functions: "{\"a\":\"b\"}".to_string(),
             variables: "{\"b\":\"c\"}".to_string(),
             tasks: "{\"d\":\"e\"}".to_string(),
-            params: vec!["something","else"].into_iter().map(String::from).collect()
+            params: vec!["something","else"].into_iter().map(String::from).collect(),
+            has_encryption: false
         };
-        match db.set_task(task){
+        match db.put_task(task){
             Ok(something) => println!("{:?}", something),
             Err(err) => println!("error: {:?}", err)
         };

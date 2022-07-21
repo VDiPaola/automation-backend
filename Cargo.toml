@@ -14,3 +14,4 @@ log = "^0.4"
 strum_macros = "^0.24"
 strum = { version = "^0.24", features = ["derive"] }
 mysql = "^22.2"
+json = "^0.12.4"

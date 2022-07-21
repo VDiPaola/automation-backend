@@ -1,16 +1,21 @@
-use serde::Serialize;
+use std::collections::HashMap;
 
-#[derive(Serialize, Debug)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SetTask {
     pub name: String,
     pub variables: String,
     pub functions: String,
     pub tasks: String,
-    pub params: Vec<String>
+    pub params: Vec<String>,
+    pub has_encryption: bool,
 }
 
-#[derive(Serialize, Debug)]
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GetTask {
     pub name: String,
-    pub params: Vec<String>
+    pub params: Vec<String>,
+    pub has_encryption: bool,
 }

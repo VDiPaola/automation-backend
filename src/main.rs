@@ -4,6 +4,7 @@ mod helpers;
 
 use controllers::task::{
     get_task,
+    new_task
 };
 use helpers::ddb::{DB};
 use actix_web::{HttpServer, App, web::Data, middleware::Logger};
@@ -37,10 +38,14 @@ async fn main() -> std::io::Result<()> {
             .wrap(logger)
             .app_data(ddb_data)
             .service(get_task)
-            // .service(create_task)
-            // .service(start_task)
+            .service(new_task)
     })
     .bind(("127.0.0.1", 80))?
     .run()
     .await
 }
+
+
+/*
+-can have a power automate request as paramter and call that with data that can be used in the automation of that flow
+*/
