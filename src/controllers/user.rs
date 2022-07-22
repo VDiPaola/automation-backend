@@ -61,7 +61,7 @@ pub async fn get_user(
 
 
 #[post("/automation/user/new")]
-pub async fn new_task(
+pub async fn new_user(
     db: Data<Mutex<DB>>,
     body_bytes: actix_web::web::Bytes
 ) -> Result<Json<Vec<String>>, UserError> {
@@ -70,7 +70,8 @@ pub async fn new_task(
         username: body["username"].to_string(),
         email: body["email"].to_string(),
         password: body["password"].to_string(),
-        role: Role::from_str(body["role"].as_str().unwrap()).unwrap(),
+        role: Role::User,
+        //Role::from_str(body["role"].as_str().unwrap()).unwrap()
     };
 
     match db.lock().unwrap().put_user(user) {

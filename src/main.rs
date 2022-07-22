@@ -2,10 +2,8 @@ mod controllers;
 mod models;
 mod helpers;
 
-use controllers::task::{
-    get_task,
-    new_task
-};
+use controllers::task::{get_task,new_task};
+use controllers::user::{get_user,new_user};
 use helpers::ddb::{DB};
 use actix_web::{HttpServer, App, web::Data, middleware::Logger};
 
@@ -39,6 +37,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(ddb_data)
             .service(get_task)
             .service(new_task)
+            .service(get_user)
+            .service(new_user)
     })
     .bind(("127.0.0.1", 80))?
     .run()

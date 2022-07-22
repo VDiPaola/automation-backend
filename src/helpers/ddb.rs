@@ -103,10 +103,12 @@ impl DB{
         let user = self.connection.exec_map(
             format!("SELECT username, role FROM users WHERE id = \"{}\"", id),
             (),
-            | (username, role): (String,String) | GetUser{
+            | (username, role): (String,String) | {
+                let role = Role::from_str(role.as_str()).unwrap_or(Role::User);
+                GetUser{
                 username,
-                role:Role::from_str(role.as_str()).unwrap(),
-
+                role,
+                }
             },
         ).unwrap();
         return user;
@@ -117,7 +119,7 @@ impl DB{
             VALUES (:username, :role, :password, :email)",
             params! {
                 "username" => user.username,
-                "role" => user.role.to_string(),
+                "role" => Role::User.to_string(),
                 "password" => user.password,
                 "email" => user.email,
             })
