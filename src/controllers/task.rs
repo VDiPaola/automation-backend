@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use crate::{helpers::ddb::DB, models::task::{GetTask, SetTask}};
+use crate::{helpers::ddb::DB, models::task::{GetTask, SetTask, AccessMode}};
 use actix_web::{
     get, 
     post, 
@@ -73,6 +73,9 @@ pub async fn new_task(
         functions: body["functions"].to_string(),
         tasks: body["tasks"].to_string(),
         params: body["params"].members().map(|x| x.to_string()).collect::<Vec<String>>(),
+        description: body["description"].to_string(),
+        author_id: "temp".to_string(),
+        access_mode: AccessMode::Public,
     };
 
     match db.lock().unwrap().put_task(task) {

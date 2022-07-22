@@ -10,7 +10,7 @@ use std::env;
 //cargo test -- --nocapture
 #[cfg(test)]
 mod tests {
-    use crate::models::task::SetTask;
+    use crate::models::task::{SetTask, AccessMode};
 
     use super::*;
 
@@ -46,7 +46,10 @@ mod tests {
             variables: "{\"b\":\"c\"}".to_string(),
             tasks: "{\"d\":\"e\"}".to_string(),
             params: vec!["something","else"].into_iter().map(String::from).collect(),
-            has_encryption: false
+            has_encryption: false,
+            description: "description".to_string(),
+            author_id: "temp".to_string(),
+            access_mode: AccessMode::Public,
         };
         match db.put_task(task){
             Ok(something) => println!("{:?}", something),
