@@ -1,17 +1,18 @@
 use std::{sync::Mutex, str::FromStr};
 
-use crate::{helpers::ddb::DB, models::{task::{GetTask, SetTask, AccessMode}, user::{GetUser, SetUser, Role}}};
+use crate::{helpers::ddb::DB, models::{task::{GetTask, SetTask, AccessMode}, user::{GetUser, SetUser, Role, User, LoginDTO}, user_token::UserToken}};
 use actix_web::{
     get, 
     post, 
     put,
     error::ResponseError,
     web::Path,
-    web::Json,
+    web::{Json, self},
     web::Data,
     HttpResponse,
-    http::{header::ContentType, StatusCode}
+    http::{header::ContentType, StatusCode}, Responder
 };
+use mysql::serde_json;
 use serde::{Serialize, Deserialize};
 use strum::{Display};
 
@@ -26,6 +27,12 @@ pub enum UserError {
     UserUpdateFailure,
     UserCreationFailure,
     BadUserRequest
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TokenBodyResponse {
+    pub token: String,
+    pub token_type: String,
 }
 
 impl ResponseError for UserError {
@@ -61,7 +68,7 @@ pub async fn get_user(
 
 
 #[post("/automation/user/new")]
-pub async fn new_user(
+pub async fn sign_up(
     db: Data<Mutex<DB>>,
     body_bytes: actix_web::web::Bytes
 ) -> Result<Json<Vec<String>>, UserError> {
@@ -72,9 +79,43 @@ pub async fn new_user(
         password: body["password"].to_string(),
         //Role::from_str(body["role"].as_str().unwrap()).unwrap()
     };
+    
 
-    match db.lock().unwrap().put_user(user) {
+    match User::signup(user, &db) {
         Ok(u) => Ok(Json(u)),
         Err(_) => Err(UserError::UserCreationFailure)
     }
 }
+
+
+#[post("/automation/user/login")]
+pub async fn login(login_dto: web::Json<LoginDTO>, db: Data<Mutex<DB>>) -> Result<impl Responder, UserError> {
+    
+    match logins(login_dto.0, &db) {
+        Ok(token_res) => Ok(Json(token_res)),
+        Err(err) => Err(err),
+    }
+}
+
+
+pub fn logins(
+    login_dto: LoginDTO,
+    db: &Data<Mutex<DB>>
+) -> Result<TokenBodyResponse, UserError> {
+    if let Some(logged_user) = User::login(login_dto, &db) {
+        match serde_json::from_value(
+            serde_json::json!({ "token": UserToken::generate_token(&logged_user), "token_type": "bearer" }),
+        ) {
+            Ok(token_res) => {
+                if logged_user.login_session.is_empty() {
+                    return Err(UserError::BadUserRequest);
+                } else {
+                    return Ok(token_res);
+                }
+            }
+            Err(_) => return Err(UserError::BadUserRequest),
+        }
+    }
+    Err(UserError::BadUserRequest)
+}
+

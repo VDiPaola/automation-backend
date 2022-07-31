@@ -6,7 +6,7 @@ use mysql::{Pool, PooledConn, params};
 use mysql::prelude::*;
 
 use crate::models::task::{SetTask, GetTask};
-use crate::models::user::{GetUser, SetUser, Role};
+use crate::models::user::{GetUser, SetUser, Role, User};
 
 
 pub struct DB{
@@ -51,6 +51,7 @@ impl DB{
                     `last_login` bigint DEFAULT NULL,
                     `code_value` varchar(191) COLLATE utf8mb4_bin DEFAULT NULL,
                     `code_expires_at` bigint DEFAULT NULL,
+                    `login_session` varchar(191) COLLATE utf8mb4_bin DEFAULT NULL,
                     PRIMARY KEY (`id`),
                     UNIQUE KEY `email` (`email`),
                     UNIQUE KEY `username` (`username`),
@@ -99,7 +100,7 @@ impl DB{
     }
 
     //USERS
-    pub fn get_user(&mut self, id: u32) -> Vec<GetUser>{
+    pub fn get_user(&mut self, id: u32) -> Result<GetUser, ()>{
         let user = self.connection.exec_map(
             format!("SELECT username, role, login_session FROM users WHERE id = \"{}\"", id),
             (),
@@ -112,17 +113,54 @@ impl DB{
                 }
             },
         ).unwrap();
-        return user;
+        match user.into_iter().next(){
+            Some(u) => Ok(u),
+            _ => Err(())
+        }
+    }
+
+    pub fn get_user_by_username_or_email(&mut self, username_or_email: String) -> Result<User, ()>{
+        let user = self.connection.exec_map(
+            r"SELECT username, role, login_session, email, id, password FROM users WHERE username=:uoe OR email=:uoe",
+            params! {
+                "uoe" => username_or_email,
+            },
+            | (username, role, login_session,email, id, password): (String,String,String,String,i32, String) | {
+                let role = Role::from_str(role.as_str()).unwrap_or(Role::User);
+                User{
+                username,
+                role,
+                login_session,
+                email,
+                id,
+                password
+                }
+            },
+        ).unwrap();
+        match user.into_iter().next(){
+            Some(u) => Ok(u),
+            _ => Err(())
+        }
     }
 
     pub fn put_user(&mut self, user: SetUser) -> Result<Vec<String>,mysql::Error>{
-        self.connection.exec(r"INSERT INTO users (username, role, password, email)
-            VALUES (:username, :role, :password, :email)",
+        self.connection.exec(r"INSERT INTO users (username, role, password, email, login_session)
+            VALUES (:username, :role, :password, :email, :login_session)",
             params! {
                 "username" => user.username,
                 "role" => Role::User.to_string(),
                 "password" => user.password,
                 "email" => user.email,
+                "login_session" => String::new(),
+            })
+    }
+
+    pub fn update_login_session(&mut self, username: String, login_session: String) -> Result<Vec<String>,mysql::Error>{
+        self.connection.exec(r"UPDATE users
+            SET login_session=:login_session WHERE username=:username LIMIT 1",
+            params! {
+                "login_session" => login_session,
+                "username" => username
             })
     }
 

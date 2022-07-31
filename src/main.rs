@@ -6,7 +6,7 @@ use actix_cors::Cors;
 
 use actix_web::http;
 use controllers::task::{get_task,new_task};
-use controllers::user::{get_user,new_user};
+use controllers::user::{get_user,sign_up,login};
 use helpers::ddb::{DB};
 use actix_web::{HttpServer, App, web::Data, middleware::Logger};
 
@@ -53,7 +53,8 @@ async fn main() -> std::io::Result<()> {
             .service(get_task)
             .service(new_task)
             .service(get_user)
-            .service(new_user)
+            .service(sign_up)
+            .service(login)
     })
     .bind(("127.0.0.1", 80))?
     .run()

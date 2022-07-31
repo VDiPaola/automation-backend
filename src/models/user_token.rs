@@ -1,7 +1,9 @@
-use crate::models::user::LoginDTO;
+
 use chrono::Utc;
 use jsonwebtoken::{EncodingKey, Header};
 use serde::{Serialize, Deserialize};
+
+use super::user::GetUser;
 
 pub static KEY: [u8; 16] = *include_bytes!("../secret.key");
 static ONE_WEEK: i64 = 60 * 60 * 24 * 7; // in seconds
@@ -18,7 +20,7 @@ pub struct UserToken {
 }
 
 impl UserToken {
-    pub fn generate_token(login: &LoginDTO) -> String {
+    pub fn generate_token(login: &GetUser) -> String {
         let now = Utc::now().timestamp_nanos() / 1_000_000_000; // nanosecond -> second
         let payload = UserToken {
             iat: now,

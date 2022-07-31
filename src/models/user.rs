@@ -3,6 +3,7 @@ use std::{str::FromStr, fmt, sync::Mutex};
 use actix_web::web::Data;
 use serde::{Serialize, Deserialize};
 use bcrypt::{hash, verify, DEFAULT_COST};
+use uuid::Uuid;
 
 use crate::{helpers::ddb::DB, controllers::user::UserError};
 
@@ -62,16 +63,17 @@ pub struct GetUser {
     pub login_session: String,
 }
 
+
+#[derive(Serialize, Deserialize)]
 pub struct LoginDTO{
-    pub username: String,
-    pub email: String,
+    pub username_or_email: String,
     pub password: String,
     pub login_session:String,
 }
 
 
 impl User {
-        pub fn signup(user: SetUser, db: &Data<Mutex<DB>>) -> Result<String, String> {
+        pub fn signup(user: SetUser, db: &Data<Mutex<DB>>) -> Result<Vec<String>, UserError> {
             let mut db_aquire = db.lock().unwrap();
             if db_aquire.get_user_by_username(user.username.clone()).is_err() {
                 let hashed_pwd = hash(&user.password, DEFAULT_COST).unwrap();
@@ -80,11 +82,11 @@ impl User {
                     ..user
                 };
                 match db_aquire.put_user(user) {
-                    Ok(u) => Ok(UserError::UserCreationFailure.to_string()),
-                    Err(_) => Err(format!("Problem registering user"))
+                    Ok(u) => Ok(u),
+                    Err(_) => Err(UserError::UserCreationFailure)
                 }
             } else {
-                Err(format!("User '{}' is already registered", &user.username))
+                Err(UserError::UserCreationFailure)
             }
         }
 
@@ -95,80 +97,44 @@ impl User {
             }
             false
         }
+
+        pub fn generate_login_session() -> String {
+            Uuid::new_v4().simple().to_string()
+        }
+
+        pub fn logout(username:String, db: &Data<Mutex<DB>>) -> bool{
+            let mut db_aquire = db.lock().unwrap();
+            match db_aquire.update_login_session(username, String::new()){
+                Ok(_) => return true,
+                Err(_) => return false
+            }
+        }
+
+        pub fn login(login: LoginDTO,db: &Data<Mutex<DB>>) -> Option<GetUser> {
+            //check user exists
+            let mut db_aquire = db.lock().unwrap();
+            if let Ok(user_to_verify) = db_aquire.get_user_by_username_or_email(login.username_or_email)
+            {
+                //verify password
+                if !user_to_verify.password.is_empty()
+                    && verify(&login.password, &user_to_verify.password).unwrap()
+                {
+                    //generate login session
+                    let login_session_str = User::generate_login_session();
+                    if let Ok(_) = db_aquire.update_login_session(user_to_verify.username.clone(), login_session_str.clone()){
+                        //valid login
+                        return Some(GetUser {
+                            username: user_to_verify.username,
+                            login_session: login_session_str,
+                            role: user_to_verify.role
+                        });
+                    }
+
+                }
+            }
+
+            None
+        }
+        
+
 }
-
-// impl User {
-
-//     pub fn login(login: LoginDTO, conn: &Connection) -> Option<LoginInfoDTO> {
-//         if let Ok(user_to_verify) = users
-//             .filter(username.eq(&login.username_or_email))
-//             .or_filter(email.eq(&login.username_or_email))
-//             .get_result::<User>(conn)
-//         {
-//             if !user_to_verify.password.is_empty()
-//                 && verify(&login.password, &user_to_verify.password).unwrap()
-//             {
-//                 if let Some(login_history) = LoginHistory::create(&user_to_verify.username, conn) {
-//                     if LoginHistory::save_login_history(login_history, conn).is_err() {
-//                         return None;
-//                     }
-//                     let login_session_str = User::generate_login_session();
-//                     if User::update_login_session_to_db(
-//                         &user_to_verify.username,
-//                         &login_session_str,
-//                         conn,
-//                     ) {
-//                         return Some(LoginInfoDTO {
-//                             username: user_to_verify.username,
-//                             login_session: login_session_str,
-//                         });
-//                     }
-//                 }
-//             } else {
-//                 return Some(LoginInfoDTO {
-//                     username: user_to_verify.username,
-//                     login_session: String::new(),
-//                 });
-//             }
-//         }
-
-//         None
-//     }
-
-//     pub fn logout(user_id: i32, conn: &Connection) {
-//         if let Ok(user) = users.find(user_id).get_result::<User>(conn) {
-//             Self::update_login_session_to_db(&user.username, "", conn);
-//         }
-//     }
-
-//     pub fn is_valid_login_session(user_token: &UserToken, conn: &Connection) -> bool {
-//         users
-//             .filter(username.eq(&user_token.user))
-//             .filter(login_session.eq(&user_token.login_session))
-//             .get_result::<User>(conn)
-//             .is_ok()
-//     }
-
-//     pub fn find_user_by_username(un: &str, conn: &Connection) -> QueryResult<User> {
-//         users.filter(username.eq(un)).get_result::<User>(conn)
-//     }
-
-//     pub fn generate_login_session() -> String {
-//         Uuid::new_v4().to_simple().to_string()
-//     }
-
-//     pub fn update_login_session_to_db(
-//         un: &str,
-//         login_session_str: &str,
-//         conn: &Connection,
-//     ) -> bool {
-//         if let Ok(user) = User::find_user_by_username(un, conn) {
-//             diesel::update(users.find(user.id))
-//                 .set(login_session.eq(login_session_str.to_string()))
-//                 .execute(conn)
-//                 .is_ok()
-//         } else {
-//             false
-//         }
-//     }
-// }
