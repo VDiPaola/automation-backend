@@ -15,3 +15,7 @@ strum_macros = "^0.24"
 strum = { version = "^0.24", features = ["derive"] }
 mysql = "^22.2"
 json = "^0.12.4"
+actix-cors = "0.6.1"
+jsonwebtoken = "8.1.1"
+chrono = "0.4.19"
+bcrypt = "0.13.0"

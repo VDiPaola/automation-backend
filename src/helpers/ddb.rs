@@ -101,13 +101,14 @@ impl DB{
     //USERS
     pub fn get_user(&mut self, id: u32) -> Vec<GetUser>{
         let user = self.connection.exec_map(
-            format!("SELECT username, role FROM users WHERE id = \"{}\"", id),
+            format!("SELECT username, role, login_session FROM users WHERE id = \"{}\"", id),
             (),
-            | (username, role): (String,String) | {
+            | (username, role, login_session): (String,String,String) | {
                 let role = Role::from_str(role.as_str()).unwrap_or(Role::User);
                 GetUser{
                 username,
                 role,
+                login_session
                 }
             },
         ).unwrap();
@@ -124,4 +125,23 @@ impl DB{
                 "email" => user.email,
             })
     }
+
+    pub fn get_user_by_username(&mut self, name: String) -> Result<GetUser, ()> {
+        let user = self.connection.query_map(
+            format!("SELECT username, role, login_session FROM users WHERE username = \"{}\"", name),
+            |(username, role, login_session): (String,String, String) | {
+                let role = Role::from_str(role.as_str()).unwrap_or(Role::User);
+                GetUser{
+                username,
+                role,
+                login_session
+                }
+            }).unwrap();
+
+        match user.into_iter().next(){
+            Some(user) => Ok(user),
+            _ => Err(())
+        }
+    }
+
 }

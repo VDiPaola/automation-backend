@@ -70,7 +70,6 @@ pub async fn new_user(
         username: body["username"].to_string(),
         email: body["email"].to_string(),
         password: body["password"].to_string(),
-        role: Role::User,
         //Role::from_str(body["role"].as_str().unwrap()).unwrap()
     };
 
